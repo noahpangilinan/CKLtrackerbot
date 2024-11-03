@@ -1,7 +1,7 @@
 import base64
 import os
 from datetime import datetime
-
+import pytz
 import numpy as np
 import json
 from google.cloud import storage
@@ -81,8 +81,18 @@ LOG_FILE = 'log.txt'
 
 def log(message: str):
     """Writes a log message with a timestamp to a log.txt file in the GCS bucket."""
-    # Get the current time and format it
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    # Get the current time in UTC
+    utc_now = datetime.now(pytz.utc)
+
+    # Convert to EST
+    est = pytz.timezone('America/New_York')
+    est_now = utc_now.astimezone(est)
+
+    # Format the time in 12-hour format with AM/PM
+    timestamp = est_now.strftime('%Y-%m-%d %I:%M:%S %p')
+
+    print(timestamp)
     log_entry = f"{timestamp} - {message}\n"
 
     # Create a blob object for the log file
