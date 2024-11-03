@@ -17,7 +17,7 @@ if credentials_json:
 client = storage.Client.from_service_account_json("credentials.json")
 
 bucket_name = "rit_ckl_stats"
-bucket = storage.client.bucket(bucket_name)
+bucket = storage.client.Bucket(bucket_name)
 
 # Constants for filenames
 DATA_FILE = 'data.json'
