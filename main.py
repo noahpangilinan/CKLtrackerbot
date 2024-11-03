@@ -461,7 +461,23 @@ async def compare_all(ctx: discord.ApplicationContext,
                 suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
             return str(n) + suffix
 
+        total_race_avgs = ("N/A", "N/A", "N/A",)
+        total = 0
+        times_played = 0
+        player_count = 0
+        for user in data.keys():
+            if race in data[user].keys():
+                total += get_avg_points(user, race)
+                player_count += 1
+                if len(data[user][race]) > times_played:
+                    times_played = len(data[user][race])
+                # Calculate average team points for a 6-player team
+        if player_count != 0:
+            team_points = round(total / (player_count / 6), 2)
+            total_race_avgs = (race, team_points, times_played)
         user_str = f"**🏁 Race Results for '{races()[race]}' 🏁**\n\n"
+        user_str += f"**Average Team Points:** {total_race_avgs[1]}\n"
+        user_str += f"*Times Played: {total_race_avgs[2]}*\n"
         sorted_users = sorted(
             data.keys(),
             key=lambda u: get_avg_placement(user=u, track=race) if race in data[u] else float('inf')
