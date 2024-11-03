@@ -1,5 +1,6 @@
 import base64
 import os
+from datetime import datetime
 
 import numpy as np
 import json
@@ -7,65 +8,55 @@ from google.cloud import storage
 
 
 # Load credentials from environment variable
-credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-if credentials_json:
-    credentials = json.loads(base64.b64decode(credentials_json))
-    # Save the JSON file temporarily for the client to use
-    with open("credentials.json", "w") as cred_file:
-        json.dump(credentials, cred_file)
+# credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+# if credentials_json:
+#     credentials = json.loads(base64.b64decode(credentials_json))
+#     # Save the JSON file temporarily for the client to use
+#     with open("credentials.json", "w") as cred_file:
+#         json.dump(credentials, cred_file)
 # Initialize Google Cloud Storage bucket
-client = storage.Client.from_service_account_json("credentials.json")
+client = storage.Client.from_service_account_json("decisive-mapper-440612-v9-255b315e8798.json")
 
 bucket_name = "rit_ckl_stats"
-bucket = storage.client.Bucket(bucket_name)
+bucket = client.bucket(bucket_name)  # Use the client to get the bucket
 
 # Constants for filenames
 DATA_FILE = 'data.json'
 VERSION_FILE = 'version.txt'
 
 # Function to get the current GCS generation ID
+# Variable to store data in memory
+data_in_memory = {}
+data_modified = True  # Track if data has been modified
+
+
 def get_cloud_generation():
     blob = bucket.blob(DATA_FILE)
     blob.reload()  # Make sure we have the latest metadata
     return blob.generation  # Returns unique generation ID as a string
 
-# Function to load the data (checks for cloud updates first)
+
+# Function to load data from GCS if modified
 def load_data():
-    try:
-        # Get the cloud generation ID
-        current_generation = get_cloud_generation()
+    global data_in_memory, data_modified  # Use global variables
 
-        # Check if we have a stored version ID and compare
-        try:
-            with open(VERSION_FILE, 'r') as version_file:
-                cached_generation = version_file.read().strip()
-        except FileNotFoundError:
-            cached_generation = None
+    if data_modified:
+        # If data has been modified, pull from the cloud
+        data_json = download_file()  # Fetch the latest data from GCS
+        data_in_memory = json.loads(data_json)  # Store it in memory
 
-        # If versions differ, download the new data
-        if cached_generation != current_generation:
-            data_json = download_file()  # Fetch the latest data from GCS
-            data = json.loads(data_json)
+        # Reset the modified flag
+        data_modified = False
 
-            # Save data and update the cached generation ID
-            with open(DATA_FILE, 'w') as data_file:
-                json.dump(data, data_file, indent=4)
-            with open(VERSION_FILE, 'w') as version_file:
-                version_file.write(current_generation)
-        else:
-            # Load from the local file if versions match
-            with open(DATA_FILE, 'r') as data_file:
-                data = json.load(data_file)
+    return data_in_memory  # Return the data stored in memory
 
-        return data
-
-    except json.JSONDecodeError:
-        return {}
-    except FileNotFoundError:
-        return {}
 
 # Function to save data and update the cloud version
 def save_data(data):
+    global data_in_memory, data_modified  # Use global variables
+    data_modified = True  # Set the modified flag
+    data_in_memory = data  # Update the in-memory data
+
     # Convert to JSON and upload to GCS
     data_json = json.dumps(data, indent=4)
     upload_file(data_json)
@@ -73,15 +64,41 @@ def save_data(data):
     # Update the cached generation ID after upload
     current_generation = get_cloud_generation()
     with open(VERSION_FILE, 'w') as version_file:
-        version_file.write(current_generation)
+        version_file.write(str(current_generation))
+
 
 def download_file():
     blob = bucket.blob(DATA_FILE)
     return blob.download_as_text()
 
+
 def upload_file(data):
     blob = bucket.blob(DATA_FILE)
     blob.upload_from_string(data, content_type='application/json')
+
+
+LOG_FILE = 'log.txt'
+
+def log(message: str):
+    """Writes a log message with a timestamp to a log.txt file in the GCS bucket."""
+    # Get the current time and format it
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_entry = f"{timestamp} - {message}\n"
+
+    # Create a blob object for the log file
+    blob = bucket.blob(LOG_FILE)
+
+    # Download the existing log data if the log file exists
+    try:
+        existing_log = blob.download_as_text()
+    except Exception:
+        existing_log = ""  # If the file doesn't exist, start with an empty string
+
+    # Append the new log entry to the existing log data
+    updated_log = existing_log + log_entry
+
+    # Upload the updated log back to the GCS bucket
+    blob.upload_from_string(updated_log, content_type='text/plain')
 
 
 

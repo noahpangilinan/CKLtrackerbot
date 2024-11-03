@@ -3,7 +3,7 @@ import os # default module
 
 from discord.enums import try_enum
 from dotenv import load_dotenv
-from utils import load_data, add_ckl_race, format_user_race_data, get_avg_placement, get_avg_points
+from utils import load_data, add_ckl_race, format_user_race_data, get_avg_placement, get_avg_points, log
 from discord.ext import commands
 from discord.ui import Button, View
 
@@ -187,7 +187,7 @@ async def help(ctx: discord.ApplicationContext):
     )
 
     await ctx.send( help_message)
-
+    log(f"{ctx.author} - help(): 200 OK")
 
 
 class ConfirmButtonView(View):
@@ -254,11 +254,15 @@ async def add_placements(
         )
         view = ConfirmButtonView(placements_list, race)
         await ctx.respond(warning_message, view=view)
+        log(f"{ctx.author} - add_ckl_race({race}, {placements}): 200 OK")
 
     except ValueError:
         await ctx.respond("Error: Please format placements as 'Name, Place; Name2, Place2'")
+        log(f"{ctx.author} - show_race_data({race}, {placements}): 404 User Not Found")
+
     except Exception as e:
         await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - show_race_data({race}, {placements}): 500 Internal Error")
 
 
 # Autocomplete function for the `user` parameter
@@ -302,10 +306,13 @@ async def show_race_data(ctx: discord.ApplicationContext,
 
         pretty_dict_str += user_str
         await ctx.respond(pretty_dict_str)
+        log(f"{ctx.author} - show_race_data({user}): 200 OK")  # Successful response
     except ValueError as ve:
         await ctx.respond(f"Error: User not found: {str(ve)}")
+        log(f"{ctx.author} - show_race_data({user}): 404 User Not Found")  # Specific user not found
     except Exception as e:
-        await ctx.respond(f"No data found: {str(e)}")
+        await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - show_race_data({user}): 500 Internal Error")
 
 
 
@@ -352,10 +359,13 @@ async def ckl_stats(ctx: discord.ApplicationContext, user: discord.Option(str, "
         )
 
         await ctx.respond(stats_message)
+        log(f"{ctx.author} - ckl_stats({user}): 200 OK")  # Successful response
     except ValueError as ve:
         await ctx.respond(f"Error: User not found: {str(ve)}")
+        log(f"{ctx.author} - ckl_stats({user}): 404 User Not Found")  # Specific user not found
     except Exception as e:
         await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - ckl_stats({user}): 500 Internal Error")
 
 
 
@@ -425,22 +435,23 @@ async def compare(ctx: discord.ApplicationContext,
 
         # Respond with the formatted message
         await ctx.respond(user_str)
-
-
+        log(f"{ctx.author} - compare({user1}, {user2}, {race}): 200 OK")  # Successful response
     except ValueError as ve:
         await ctx.respond(f"Error: User not found: {str(ve)}")
+        log(f"{ctx.author} - compare({user1}, {user2}, {race}): 404 User Not Found")  # Specific user not found
     except Exception as e:
-        await ctx.respond(f"No data found: {str(e)}")
+        await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - compare({user1}, {user2}, {race}): 500 Internal Error")
 
 
 
 @bot.slash_command(name="compare_all", description="Show race data for all users for a race")
 async def compare_all(ctx: discord.ApplicationContext,
                 race: discord.Option(str, "Select a race", autocomplete=race_autocomplete)):
+    await ctx.defer()
     try:
         # Convert the formatted string into a list of tuples
         data = load_data()
-
 
         def ordinal(n):
             """Convert an integer to an ordinal string."""
@@ -455,7 +466,6 @@ async def compare_all(ctx: discord.ApplicationContext,
             data.keys(),
             key=lambda u: get_avg_placement(user=u, track=race) if race in data[u] else float('inf')
         )
-
         for idx, user in enumerate(sorted_users):
             if race in data[user]:
                 placements_str = ', '.join(ordinal(place) for place in data[user][race])  # Format placements
@@ -480,13 +490,13 @@ async def compare_all(ctx: discord.ApplicationContext,
                 user_str += f"{'-' * 30}\n\n"  # Separator for clarity
 
         await ctx.respond(user_str)
-
-        await ctx.respond(user_str)
+        log(f"{ctx.author} - compare_all({race}): 200 OK")  # Successful response
     except ValueError as ve:
         await ctx.respond(f"Error: User not found: {str(ve)}")
+        log(f"{ctx.author} - compare_all({race}): 404 User Not Found")  # Specific user not found
     except Exception as e:
-        await ctx.respond(f"No data found: {str(e)}")
-
+        await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - compare_all({race}): 500 Internal Error")
 
 async def by_autocomplete(ctx: discord.AutocompleteContext):
     by =  ["Placements", "Points"]
@@ -547,11 +557,13 @@ async def best(ctx: discord.ApplicationContext,
                              f"{'-' * 30}\n\n")
 
         await ctx.respond(user_str)
-
+        log(f"{ctx.author} - best({user},{by},{count}): 200 OK")  # Successful response
     except ValueError as ve:
         await ctx.respond(f"Error: User not found: {str(ve)}")
+        log(f"{ctx.author} - best({user},{by},{count}): 404 User Not Found")  # Specific user not found
     except Exception as e:
-        await ctx.respond(f"No data found: {str(e)}")
+        await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - best({user},{by},{count}): 500 Internal Error")
 
 
 
@@ -611,11 +623,13 @@ async def worst(ctx: discord.ApplicationContext,
                              f"{'-' * 30}\n\n")
 
         await ctx.respond(user_str)
-
+        log(f"{ctx.author} - worst({user},{by},{count}): 200 OK")  # Successful response
     except ValueError as ve:
         await ctx.respond(f"Error: User not found: {str(ve)}")
+        log(f"{ctx.author} - worst({user},{by},{count}): 404 User Not Found")  # Specific user not found
     except Exception as e:
-        await ctx.respond(f"No data found: {str(e)}")
+        await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - worst({user},{by},{count}): 500 Internal Error")
 
 
 def split_message(message, max_length=2000):
@@ -671,10 +685,14 @@ async def rarest(ctx: discord.ApplicationContext,
             for msg in messages:
                 await ctx.respond(msg)
 
+        log(f"{ctx.author} - rarest({user},{count}): 200 OK")  # Successful response
     except ValueError as ve:
         await ctx.respond(f"Error: User not found: {str(ve)}")
+        log(f"{ctx.author} - rarest({user},{count}): 404 User Not Found")  # Specific user not found
     except Exception as e:
-        await ctx.respond(f"No data found: {str(e)}")
+        await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - rarest({user},{count}): 500 Internal Error")
+
 
 
 
@@ -726,16 +744,19 @@ async def most_frequent(ctx: discord.ApplicationContext,
             for msg in messages:
                 await ctx.respond(msg)
 
-
+        log(f"{ctx.author} - most_frequent({user},{count}): 200 OK")  # Successful response
     except ValueError as ve:
         await ctx.respond(f"Error: User not found: {str(ve)}")
+        log(f"{ctx.author} - most_frequent({user},{count}): 404 User Not Found")  # Specific user not found
     except Exception as e:
-        await ctx.respond(f"No data found: {str(e)}")
+        await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - most_frequent({user},{count}): 500 Internal Error")
 
 
 @bot.slash_command(name="find_best_team_races", description="Show best team races")
 async def find_best_team_races(ctx: discord.ApplicationContext,
                count: int):
+    await ctx.defer()
     try:
         # Load data
         data = load_data()
@@ -791,10 +812,13 @@ async def find_best_team_races(ctx: discord.ApplicationContext,
             for msg in messages:
                 await ctx.respond(msg)
 
+        log(f"{ctx.author} - find_best_team_races({count}): 200 OK")  # Successful response
     except ValueError as ve:
         await ctx.respond(f"Error: User not found: {str(ve)}")
+        log(f"{ctx.author} - find_best_team_races({count}): 404 User Not Found")  # Specific user not found
     except Exception as e:
         await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - find_best_team_races({count}): 500 Internal Error")
 
 
 
