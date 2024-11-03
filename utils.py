@@ -8,14 +8,14 @@ from google.cloud import storage
 
 
 # Load credentials from environment variable
-# credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-# if credentials_json:
-#     credentials = json.loads(base64.b64decode(credentials_json))
-#     # Save the JSON file temporarily for the client to use
-#     with open("credentials.json", "w") as cred_file:
-#         json.dump(credentials, cred_file)
+credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+if credentials_json:
+    credentials = json.loads(base64.b64decode(credentials_json))
+    # Save the JSON file temporarily for the client to use
+    with open("credentials.json", "w") as cred_file:
+        json.dump(credentials, cred_file)
 # Initialize Google Cloud Storage bucket
-client = storage.Client.from_service_account_json("decisive-mapper-440612-v9-255b315e8798.json")
+client = storage.Client.from_service_account_json("credentials.json")
 
 bucket_name = "rit_ckl_stats"
 bucket = client.bucket(bucket_name)  # Use the client to get the bucket
