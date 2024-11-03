@@ -1,24 +1,88 @@
-import json
+import base64
+import os
+
 import numpy as np
+import json
+from google.cloud import storage
 
 
+# Load credentials from environment variable
+credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+if credentials_json:
+    credentials = json.loads(base64.b64decode(credentials_json))
+    # Save the JSON file temporarily for the client to use
+    with open("credentials.json", "w") as cred_file:
+        json.dump(credentials, cred_file)
+# Initialize Google Cloud Storage bucket
+client = storage.Client.from_service_account_json("credentials.json")
 
-# Function to load data (for bot use)
+bucket_name = "rit_ckl_stats"
+bucket = storage.client.bucket(bucket_name)
 
+# Constants for filenames
+DATA_FILE = 'data.json'
+VERSION_FILE = 'version.txt'
+
+# Function to get the current GCS generation ID
+def get_cloud_generation():
+    blob = bucket.blob(DATA_FILE)
+    blob.reload()  # Make sure we have the latest metadata
+    return blob.generation  # Returns unique generation ID as a string
+
+# Function to load the data (checks for cloud updates first)
 def load_data():
     try:
-        with open('data.json', 'r') as file:
-            return json.load(file)
+        # Get the cloud generation ID
+        current_generation = get_cloud_generation()
+
+        # Check if we have a stored version ID and compare
+        try:
+            with open(VERSION_FILE, 'r') as version_file:
+                cached_generation = version_file.read().strip()
+        except FileNotFoundError:
+            cached_generation = None
+
+        # If versions differ, download the new data
+        if cached_generation != current_generation:
+            data_json = download_file()  # Fetch the latest data from GCS
+            data = json.loads(data_json)
+
+            # Save data and update the cached generation ID
+            with open(DATA_FILE, 'w') as data_file:
+                json.dump(data, data_file, indent=4)
+            with open(VERSION_FILE, 'w') as version_file:
+                version_file.write(current_generation)
+        else:
+            # Load from the local file if versions match
+            with open(DATA_FILE, 'r') as data_file:
+                data = json.load(data_file)
+
+        return data
+
     except json.JSONDecodeError:
-        # Return an empty dictionary or list if the file is empty or not valid JSON
         return {}
     except FileNotFoundError:
-        # Return an empty dictionary if the file does not exist
         return {}
-# Function to save data (for your use)
+
+# Function to save data and update the cloud version
 def save_data(data):
-    with open('data.json', 'w') as file:
-        json.dump(data, file, indent=4)
+    # Convert to JSON and upload to GCS
+    data_json = json.dumps(data, indent=4)
+    upload_file(data_json)
+
+    # Update the cached generation ID after upload
+    current_generation = get_cloud_generation()
+    with open(VERSION_FILE, 'w') as version_file:
+        version_file.write(current_generation)
+
+def download_file():
+    blob = bucket.blob(DATA_FILE)
+    return blob.download_as_text()
+
+def upload_file(data):
+    blob = bucket.blob(DATA_FILE)
+    blob.upload_from_string(data, content_type='application/json')
+
 
 
 def add_ckl_race(placements: list[tuple], race: str):
