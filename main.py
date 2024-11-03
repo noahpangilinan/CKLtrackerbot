@@ -477,7 +477,7 @@ async def compare_all(ctx: discord.ApplicationContext,
             total_race_avgs = (race, team_points, times_played)
         user_str = f"**🏁 Race Results for '{races()[race]}' 🏁**\n\n"
         user_str += f"**Average Team Points:** {total_race_avgs[1]}\n"
-        user_str += f"*Times Played: {total_race_avgs[2]}*\n"
+        user_str += f"**Times Played:** {total_race_avgs[2]}\n\n"
         sorted_users = sorted(
             data.keys(),
             key=lambda u: get_avg_placement(user=u, track=race) if race in data[u] else float('inf')
