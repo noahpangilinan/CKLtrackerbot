@@ -368,81 +368,146 @@ async def ckl_stats(ctx: discord.ApplicationContext, user: discord.Option(str, "
         log(f"{ctx.author} - ckl_stats({user}): 500 Internal Error")
 
 
-
-
 @bot.slash_command(name="compare", description="Show race data for specific users and race")
 async def compare(ctx: discord.ApplicationContext,
-                user1: discord.Option(str, "Select a user", autocomplete=user_autocomplete),
-                user2: discord.Option(str, "Select a user", autocomplete=user_autocomplete),
-                race: discord.Option(str, "Select a race", autocomplete=race_autocomplete)):
+                  user1: discord.Option(str, "Select a user", autocomplete=user_autocomplete),
+                  user2: discord.Option(str, "Select a user", autocomplete=user_autocomplete),
+                  race: discord.Option(str, "Select a race", autocomplete=race_autocomplete) = None):
     try:
-        # Convert the formatted string into a list of tuples
+        # Load data dictionary from a JSON file or cloud storage
         data = load_data()
 
+        # Check if users exist in the data
         if user1 not in data.keys():
             raise ValueError(user1)
         if user2 not in data.keys():
             raise ValueError(user2)
 
+        user_str = ""
+        if race:
+            # Initialize string with track information
+            user_str = f"**🏎️ Track:** {races()[race]} ({race})\n\n"
 
-        # Initialize string with track information
-        user_str = f"**🏎️ Track:** {races()[race]} ({race})\n\n"
+            # Get average points and placements for each user
+            user1_avg_points = get_avg_points(user=user1, track=race)
+            user2_avg_points = get_avg_points(user=user2, track=race)
+            user1_avg_place = get_avg_placement(user=user1, track=race)
+            user2_avg_place = get_avg_placement(user=user2, track=race)
+            user1_play_count = len(data[user1][race])
+            user2_play_count = len(data[user2][race])
 
-        # Get average points and placements for each user
-        user1_avg_points = get_avg_points(user=user1, track=race)
-        user2_avg_points = get_avg_points(user=user2, track=race)
-        user1_avg_place = get_avg_placement(user=user1, track=race)
-        user2_avg_place = get_avg_placement(user=user2, track=race)
-        user1_play_count = len(data[user1][race])
-        user2_play_count = len(data[user2][race])
+            # Determine which user has the higher average points and order results
+            if user1_avg_points > user2_avg_points:
+                # User1 is the winner
+                winner_str = (
+                    f"**🏆 {user1}**\n"
+                    f"-------------------------\n"
+                    f"- **Average Placement:** {user1_avg_place}\n"
+                    f"- **Average Points:** {user1_avg_points}\n"
+                    f"- *Played {user1_play_count} times*\n\n"
+                )
+                runner_up_str = (
+                    f"**{user2}**\n"
+                    f"-------------------------\n"
+                    f"- **Average Placement:** {user2_avg_place}\n"
+                    f"- **Average Points:** {user2_avg_points}\n"
+                    f"- *Played {user2_play_count} times*\n"
+                )
+            else:
+                # User2 is the winner
+                winner_str = (
+                    f"**🏆 {user2}**\n"
+                    f"-------------------------\n"
+                    f"- **Average Placement:** {user2_avg_place}\n"
+                    f"- **Average Points:** {user2_avg_points}\n"
+                    f"- *Played {user2_play_count} times*\n\n"
+                )
+                runner_up_str = (
+                    f"**{user1}**\n"
+                    f"-------------------------\n"
+                    f"- **Average Placement:** {user1_avg_place}\n"
+                    f"- **Average Points:** {user1_avg_points}\n"
+                    f"- *Played {user1_play_count} times*\n"
+                )
 
-        # Determine which user has the higher average points and order results
-        if user1_avg_points > user2_avg_points:
-            # User1 is the winner
-            winner_str = (
-                f"**🏆 {user1}**\n"
-                f"-------------------------\n"
-                f"- **Average Placement:** {user1_avg_place}\n"
-                f"- **Average Points:** {user1_avg_points}\n"
-                f"- *Played {user1_play_count} times*\n\n"
-            )
-            runner_up_str = (
-                f"**{user2}**\n"
-                f"-------------------------\n"
-                f"- **Average Placement:** {user2_avg_place}\n"
-                f"- **Average Points:** {user2_avg_points}\n"
-                f"- *Played {user2_play_count} times*\n"
-            )
+            # Combine winner and runner-up strings into the final user_str
+            user_str += winner_str + runner_up_str
         else:
-            # User2 is the winner
-            winner_str = (
-                f"**🏆 {user2}**\n"
-                f"-------------------------\n"
-                f"- **Average Placement:** {user2_avg_place}\n"
-                f"- **Average Points:** {user2_avg_points}\n"
-                f"- *Played {user2_play_count} times*\n\n"
-            )
-            runner_up_str = (
-                f"**{user1}**\n"
-                f"-------------------------\n"
-                f"- **Average Placement:** {user1_avg_place}\n"
-                f"- **Average Points:** {user1_avg_points}\n"
-                f"- *Played {user1_play_count} times*\n"
-            )
+            # Initialize averages and counters for each user
+            race_avgs = []
+            race_points_avgs = []
+            user1_play_count = 0
 
-        # Combine winner and runner-up strings into the final user_str
-        user_str += winner_str + runner_up_str
+            for race in data[user1].keys():
+                user1_play_count += len(data[user1][race])
+                race_avgs.append((race, get_avg_placement(user=user1, track=race)))
+                race_points_avgs.append((race, get_avg_points(user=user1, track=race)))
+
+            race_avgs = sorted(race_avgs, key=lambda tup: tup[1])
+            race_points_avgs = sorted(race_points_avgs, key=lambda tup: tup[1])
+            user1_avg_points = round(sum(elt[1] for elt in race_points_avgs) / len(race_points_avgs), 2)
+            user1_avg_place = round(sum(elt[1] for elt in race_avgs) / len(race_avgs), 2)
+
+            race_avgs = []
+            race_points_avgs = []
+            user2_play_count = 0
+
+            for race in data[user2].keys():
+                user2_play_count += len(data[user2][race])
+                race_avgs.append((race, get_avg_placement(user=user2, track=race)))
+                race_points_avgs.append((race, get_avg_points(user=user2, track=race)))
+
+            race_avgs = sorted(race_avgs, key=lambda tup: tup[1])
+            race_points_avgs = sorted(race_points_avgs, key=lambda tup: tup[1])
+            user2_avg_points = round(sum(elt[1] for elt in race_points_avgs) / len(race_points_avgs), 2)
+            user2_avg_place = round(sum(elt[1] for elt in race_avgs) / len(race_avgs), 2)
+
+            # Compare points and assign winner/runner-up strings
+            if user1_avg_points > user2_avg_points:
+                winner_str = (
+                    f"**🏆 {user1}**\n"
+                    f"-------------------------\n"
+                    f"- **Average Placement:** {user1_avg_place}\n"
+                    f"- **Average Points:** {user1_avg_points}\n"
+                    f"- *Played {user1_play_count} times*\n\n"
+                )
+                runner_up_str = (
+                    f"**{user2}**\n"
+                    f"-------------------------\n"
+                    f"- **Average Placement:** {user2_avg_place}\n"
+                    f"- **Average Points:** {user2_avg_points}\n"
+                    f"- *Played {user2_play_count} times*\n"
+                )
+            else:
+                winner_str = (
+                    f"**🏆 {user2}**\n"
+                    f"-------------------------\n"
+                    f"- **Average Placement:** {user2_avg_place}\n"
+                    f"- **Average Points:** {user2_avg_points}\n"
+                    f"- *Played {user2_play_count} times*\n\n"
+                )
+                runner_up_str = (
+                    f"**{user1}**\n"
+                    f"-------------------------\n"
+                    f"- **Average Placement:** {user1_avg_place}\n"
+                    f"- **Average Points:** {user1_avg_points}\n"
+                    f"- *Played {user1_play_count} times*\n"
+                )
+
+            # Combine winner and runner-up strings into the final user_str
+            user_str += winner_str + runner_up_str
 
         # Respond with the formatted message
         await ctx.respond(user_str)
         log(f"{ctx.author} - compare({user1}, {user2}, {race}): 200 OK")  # Successful response
+
     except ValueError as ve:
         await ctx.respond(f"Error: User not found: {str(ve)}")
         log(f"{ctx.author} - compare({user1}, {user2}, {race}): 404 User Not Found")  # Specific user not found
+
     except Exception as e:
         await ctx.respond(f"An error occurred: {str(e)}")
         log(f"{ctx.author} - compare({user1}, {user2}, {race}): 500 Internal Error")
-
 
 
 @bot.slash_command(name="compare_all", description="Show race data for all users for a race")
