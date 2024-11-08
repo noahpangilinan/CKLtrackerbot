@@ -248,7 +248,7 @@ async def add_placements(
 
         # Construct the warning message to confirm the race and placements for each user
         warning_message += (
-                f"Is the following data correct for the race '{race}'?\n\n"
+                f"Is the following data correct for the race '{races()[race]}' ({race})?\n\n"
                 "Placements:\n" + "\n".join(
             [f"{name}: {place}" for name, place in placements_list])
         )
