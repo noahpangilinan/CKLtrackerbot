@@ -37,10 +37,10 @@ def get_cloud_generation():
 
 
 # Function to load data from GCS if modified
-def load_data():
+def load_data(force_reload = False):
     global data_in_memory, data_modified  # Use global variables
 
-    if data_modified:
+    if data_modified or force_reload:
         # If data has been modified, pull from the cloud
         data_json = download_file()  # Fetch the latest data from GCS
         data_in_memory = json.loads(data_json)  # Store it in memory

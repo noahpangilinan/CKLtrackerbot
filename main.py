@@ -902,6 +902,16 @@ async def find_best_team_races(ctx: discord.ApplicationContext,
         log(f"{ctx.author} - find_best_team_races({count}): 500 Internal Error")
 
 
+@bot.slash_command(name="update", description="reloads data")
+async def update(ctx: discord.ApplicationContext):
+    try:
+        load_data(True)
+        await ctx.respond("Data Reloaded!")
+
+        log(f"{ctx.author} - update(): 200 OK")  # Successful response
+    except Exception as e:
+        await ctx.respond(f"An error occurred: {str(e)}")
+        log(f"{ctx.author} - update(): 500 Internal Error")
 
 bot.run(os.getenv('TOKEN')) # run the bot with the token
 
