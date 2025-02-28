@@ -588,7 +588,8 @@ async def by_autocomplete(ctx: discord.AutocompleteContext):
 async def best(ctx: discord.ApplicationContext,
                user: discord.Option(str, "Select a user", autocomplete=user_autocomplete),
                by: discord.Option(str, "Choose 'Placements' or 'Points'", autocomplete=by_autocomplete),
-               count: int):
+               count: int,
+               min_races = 1):
     try:
         # Load data and validate the user
         data = load_data()
@@ -602,8 +603,9 @@ async def best(ctx: discord.ApplicationContext,
         # Populate average placements and points for each race
         for race in data[user].keys():
             times_played = len(data[user][race])
-            race_avgs.append((race, get_avg_placement(user=user, track=race), times_played))
-            race_points_avgs.append((race, get_avg_points(user=user, track=race), times_played))
+            if times_played >= min_races:
+                race_avgs.append((race, get_avg_placement(user=user, track=race), times_played))
+                race_points_avgs.append((race, get_avg_points(user=user, track=race), times_played))
 
         # Sort lists based on user's choice
         race_avgs = sorted(race_avgs, key=lambda tup: tup[1])[:count]
@@ -652,7 +654,8 @@ async def best(ctx: discord.ApplicationContext,
 async def worst(ctx: discord.ApplicationContext,
                user: discord.Option(str, "Select a user", autocomplete=user_autocomplete),
                by: discord.Option(str, "Choose 'Placements' or 'Points'", autocomplete=by_autocomplete),
-               count: int):
+               count: int,
+               min_races = 1):
     try:
         # Load data and validate the user
         data = load_data()
@@ -668,8 +671,9 @@ async def worst(ctx: discord.ApplicationContext,
         # Populate average placements and points for each race
         for race in data[user].keys():
             times_played = len(data[user][race])
-            race_avgs.append((race, get_avg_placement(user=user, track=race), times_played))
-            race_points_avgs.append((race, get_avg_points(user=user, track=race), times_played))
+            if times_played >= min_races:
+                race_avgs.append((race, get_avg_placement(user=user, track=race), times_played))
+                race_points_avgs.append((race, get_avg_points(user=user, track=race), times_played))
 
         # Sort lists based on user's choice
         race_avgs = sorted(race_avgs, key=lambda tup: tup[1], reverse=True)[:count]
