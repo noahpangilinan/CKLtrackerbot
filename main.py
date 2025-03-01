@@ -603,7 +603,7 @@ async def best(ctx: discord.ApplicationContext,
         # Populate average placements and points for each race
         for race in data[user].keys():
             times_played = len(data[user][race])
-            if times_played >= min_races:
+            if int(times_played) >= int(min_races):
                 race_avgs.append((race, get_avg_placement(user=user, track=race), times_played))
                 race_points_avgs.append((race, get_avg_points(user=user, track=race), times_played))
 
@@ -671,7 +671,7 @@ async def worst(ctx: discord.ApplicationContext,
         # Populate average placements and points for each race
         for race in data[user].keys():
             times_played = len(data[user][race])
-            if times_played >= min_races:
+            if int(times_played) >= int(min_races):
                 race_avgs.append((race, get_avg_placement(user=user, track=race), times_played))
                 race_points_avgs.append((race, get_avg_points(user=user, track=race), times_played))
 
